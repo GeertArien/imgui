@@ -114,6 +114,7 @@ struct ImGuiStorage;                // Helper for key->value storage
 struct ImGuiStyle;                  // Runtime data for styling/colors
 struct ImGuiTextBuffer;             // Helper to hold and append into a text buffer (~string builder)
 struct ImGuiTextFilter;             // Helper to parse and apply text filters (e.g. "aaaaa[,bbbb][,ccccc]")
+struct ImVec2;
 
 // Typedefs and Enums/Flags (declared as int for compatibility with old C++, to allow using as flags and to not pollute the top of this file)
 // Use your programming IDE "Go to definition" facility on the names of the center columns to find the actual flags/enum lists.
@@ -149,6 +150,7 @@ typedef int ImGuiTreeNodeFlags;     // -> enum ImGuiTreeNodeFlags_   // Flags: f
 typedef int ImGuiWindowFlags;       // -> enum ImGuiWindowFlags_     // Flags: for Begin*()
 typedef int (*ImGuiInputTextCallback)(ImGuiInputTextCallbackData *data);
 typedef void (*ImGuiSizeCallback)(ImGuiSizeCallbackData* data);
+typedef bool (*ImGuiHitTestCallback)(const ImVec2& point, const ImVec2& min, const ImVec2& max, void* user_data);
 
 // Scalar data types
 typedef signed char         ImS8;   // 8-bit signed integer == char
@@ -330,6 +332,8 @@ namespace ImGui
     IMGUI_API void          PopAllowKeyboardFocus();
     IMGUI_API void          PushButtonRepeat(bool repeat);                                  // in 'repeat' mode, Button*() functions return repeated true in a typematic manner (using io.KeyRepeatDelay/io.KeyRepeatRate setting). Note that you can call IsItemActive() after any Button() to tell if the button is held in the current frame.
     IMGUI_API void          PopButtonRepeat();
+    IMGUI_API void          PushHitTest(ImGuiHitTestCallback callback, void* user_data = NULL);
+    IMGUI_API void          PopHitTest();
 
     // Cursor / Layout
     // - By "cursor" we mean the current output position.
