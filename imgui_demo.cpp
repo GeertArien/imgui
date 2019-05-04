@@ -2142,7 +2142,7 @@ static void ShowDemoWindowLayout()
         static bool widget_a = true, widget_b = true, widget_c = true;
         static bool spring_a = true, spring_ab = true, spring_bc = true, spring_c = true;
         static bool minimize_width = false, minimize_height = true;
-        static bool horizontal = true, draw_springs = true;
+        static bool horizontal = true, draw_springs = false;
         static ImVec2 item_spacing = ImGui::GetStyle().ItemSpacing;
         static float a_c_spring_weight = 0.0f;
         static float ab_spring_weight = 0.5f;
@@ -2220,7 +2220,8 @@ static void ShowDemoWindowLayout()
         ImGui::Checkbox("Spring C",  &spring_c);
         ImGui::Checkbox("Horizontal", &horizontal);            ImGui::SameLine();
         ImGui::Checkbox("Minimize Width", &minimize_width);     ImGui::SameLine();
-        ImGui::Checkbox("Minimize Height",  &minimize_height);
+        ImGui::Checkbox("Minimize Height",  &minimize_height); ImGui::SameLine();
+        ImGui::Checkbox("Draw Springs",  &draw_springs);
         ImGui::DragFloat("Item Spacing", horizontal ? &item_spacing.x : &item_spacing.y, 0.1f, 0.0f, 50.0f);
         ImGui::DragFloat("A & C Spring Weight", &a_c_spring_weight, 0.002f, 0.0f, 1.0f);
         ImGui::DragFloat("AB Spring Weight", &ab_spring_weight, 0.002f, 0.0f, 1.0f);
