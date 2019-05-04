@@ -8507,7 +8507,11 @@ static void ImGui::BeginLayout(ImGuiID id, ImGuiLayoutType type, ImVec2 size, fl
 
         // Indent horizontal position to match edge of the layout.
         layout->Indent = layout->StartPos.x - window->DC.CursorPos.x;
-        SignedIndent(layout->Indent);
+
+        window->WorkRect.Min.x += layout->Indent;
+        window->DC.CursorPos.x  = window->WorkRect.Min.x;
+
+        //SignedIndent(layout->Indent);
     }
 
     BeginLayoutItem(*layout);
@@ -8934,22 +8938,17 @@ static void ImGui::BeginLayoutItem(ImGuiLayout& layout)
     // If layout changes in current frame alignment will 
     // be corrected in EndLayout() to it visualy coherent.
     item.CurrentAlignOffset = CalculateLayoutItemAlignmentOffset(layout, item);
-    if (item.CurrentAlign > 0.0f)
+    if (item.CurrentAlignOffset != 0.0f)
     {
         if (layout.Type == ImGuiLayoutType_Horizontal)
         {
+            window->WorkRect.Min.y += item.CurrentAlignOffset;
             window->DC.CursorPos.y += item.CurrentAlignOffset;
         }
         else
         {
-            float new_position = window->DC.CursorPos.x + item.CurrentAlignOffset;
-
-            // Make placement behave like in horizontal case when next
-            // widget is placed at very same Y position. This indent
-            // make sure for vertical layout placed widgets has same X position.
-            SignedIndent(item.CurrentAlignOffset);
-
-            window->DC.CursorPos.x = new_position;
+            window->WorkRect.Min.x += item.CurrentAlignOffset;
+            window->DC.CursorPos.x += item.CurrentAlignOffset;
         }
     }
 
@@ -8968,8 +8967,19 @@ static void ImGui::EndLayoutItem(ImGuiLayout& layout)
     ImDrawList* draw_list = window->DrawList;
     item.VertexIndexEnd = draw_list->_VtxCurrentIdx;
 
-    if (item.CurrentAlign > 0.0f && layout.Type == ImGuiLayoutType_Vertical)
-        SignedIndent(-item.CurrentAlignOffset);
+    if (item.CurrentAlignOffset != 0.0f)
+    {
+        if (layout.Type == ImGuiLayoutType_Horizontal)
+        {
+            window->WorkRect.Min.y -= item.CurrentAlignOffset;
+            window->DC.CursorPos.y -= item.CurrentAlignOffset;
+        }
+        else
+        {
+            window->WorkRect.Min.x -= item.CurrentAlignOffset;
+            window->DC.CursorPos.x -= item.CurrentAlignOffset;
+        }
+    }
 
     // Fixup item alignment in case item size changed in current frame.
     ImVec2 position_correction = BalanceLayoutItemAlignment(layout, item);
