@@ -1038,6 +1038,7 @@ static const float WINDOWS_RESIZE_FROM_EDGES_FEEDBACK_TIMER = 0.04f;    // Reduc
 //-------------------------------------------------------------------------
 
 static void             SetCurrentWindow(ImGuiWindow* window);
+static void             SetWindowHitTest(ImGuiWindow* window, ImGuiHitTestData hitTest);
 static void             FindHoveredWindow();
 static ImGuiWindow*     CreateNewWindow(const char* name, ImVec2 size, ImGuiWindowFlags flags);
 static void             CheckStacksSize(ImGuiWindow* window, bool write);
@@ -2603,6 +2604,7 @@ ImGuiWindow::ImGuiWindow(ImGuiContext* context, const char* name)
     HiddenFramesCanSkipItems = HiddenFramesCannotSkipItems = 0;
     SetWindowPosAllowFlags = SetWindowSizeAllowFlags = SetWindowCollapsedAllowFlags = ImGuiCond_Always | ImGuiCond_Once | ImGuiCond_FirstUseEver | ImGuiCond_Appearing;
     SetWindowPosVal = SetWindowPosPivot = ImVec2(FLT_MAX, FLT_MAX);
+    WindowHitTest = ImGuiHitTestData();
 
     LastFrameActive = -1;
     ItemWidthDefault = 0.0f;
@@ -4146,6 +4148,9 @@ static void FindHoveredWindow()
         if (!bb.Contains(g.IO.MousePos))
             continue;
 
+        if (window->WindowHitTest.Callback && !window->WindowHitTest.Callback(g.IO.MousePos, window->Pos, window->Size, window->WindowHitTest.UserData))
+            continue;
+
         // Those seemingly unnecessary extra tests are because the code here is a little different in viewport/docking branches.
         if (hovered_window == NULL)
             hovered_window = window;
@@ -4172,9 +4177,13 @@ bool ImGui::IsMouseHoveringRect(const ImVec2& r_min, const ImVec2& r_max, bool c
 
     // Expand for touch input
     const ImRect rect_for_touch(rect_clipped.Min - g.Style.TouchExtraPadding, rect_clipped.Max + g.Style.TouchExtraPadding);
-    if (!rect_for_touch.Contains(g.IO.MousePos))
-        return false;
-    return true;
+    bool result = rect_for_touch.Contains(g.IO.MousePos);
+
+    ImGuiWindow* window = g.CurrentWindow;
+    if (result && window->DC.HitTest.Callback)
+        return window->DC.HitTest.Callback(g.IO.MousePos, r_min, r_max, window->DC.HitTest.UserData);
+    else
+        return result;
 }
 
 int ImGui::GetKeyIndex(ImGuiKey imgui_key)
@@ -5302,6 +5311,8 @@ bool ImGui::Begin(const char* name, bool* p_open, ImGuiWindowFlags flags)
     }
     if (g.NextWindowData.Flags & ImGuiNextWindowDataFlags_HasCollapsed)
         SetWindowCollapsed(window, g.NextWindowData.CollapsedVal, g.NextWindowData.CollapsedCond);
+    if (g.NextWindowData.WindowHitTest)
+        SetWindowHitTest(window, g.NextWindowData.WindowHitTestVal);
     if (g.NextWindowData.Flags & ImGuiNextWindowDataFlags_HasFocus)
         FocusWindow(window);
     if (window->Appearing)
@@ -6027,6 +6038,22 @@ void ImGui::PopButtonRepeat()
     PopItemFlag();
 }
 
+void ImGui::PushHitTest(ImGuiHitTestCallback callback, void* user_data)
+{
+    ImGuiHitTestData hitTest = ImGuiHitTestData(callback, user_data);
+
+    ImGuiWindow* window = GetCurrentWindow();
+    window->DC.HitTest = hitTest;
+    window->DC.HitTestStack.push_back(hitTest);
+}
+
+void ImGui::PopHitTest()
+{
+    ImGuiWindow* window = GetCurrentWindow();
+    window->DC.HitTestStack.pop_back();
+    window->DC.HitTest = window->DC.HitTestStack.empty() ? ImGuiHitTestData() : window->DC.HitTestStack.back();
+}
+
 void ImGui::PushTextWrapPos(float wrap_pos_x)
 {
     ImGuiWindow* window = GetCurrentWindow();
@@ -6465,6 +6492,17 @@ void ImGui::SetWindowFocus(const char* name)
     }
 }
 
+static void SetWindowHitTest(ImGuiWindow* window, ImGuiHitTestData hitTest)
+{
+    window->WindowHitTest = hitTest;
+}
+
+void ImGui::SetWindowHitTest(const char* name, ImGuiHitTestCallback callback, void* user_data)
+{
+    if (ImGuiWindow* window = FindWindowByName(name))
+        SetWindowHitTest(window, ImGuiHitTestData(callback, user_data));
+}
+
 void ImGui::SetNextWindowPos(const ImVec2& pos, ImGuiCond cond, const ImVec2& pivot)
 {
     ImGuiContext& g = *GImGui;
@@ -6520,6 +6558,13 @@ void ImGui::SetNextWindowBgAlpha(float alpha)
     ImGuiContext& g = *GImGui;
     g.NextWindowData.Flags |= ImGuiNextWindowDataFlags_HasBgAlpha;
     g.NextWindowData.BgAlphaVal = alpha;
+}
+
+void ImGui::SetNextWindowHitTest(ImGuiHitTestCallback callback, void* user_data)
+{
+    ImGuiContext& g = *GImGui;
+    g.NextWindowData.WindowHitTest = true;
+    g.NextWindowData.WindowHitTestVal = ImGuiHitTestData(callback, user_data);
 }
 
 // FIXME: This is in window space (not screen space!). We should try to obsolete all those functions.
